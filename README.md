@@ -40,6 +40,27 @@ El proyecto sigue una arquitectura en capas:
 - `security` → Filtro JWT
 
 ---
+📡 API Endpoints
+
+🔓 Auth
+
+POST /auth/register  
+POST /auth/login  
+
+🔐 Reservas
+
+GET /reservas (requires JWT)
+
+---
+
+🧪 Testing with Postman
+
+1. Register user
+2. Login to get token
+3. Use Bearer Token in headers
+4. Access protected endpoints
+---
+
 Endpoints principales
 🔓 Autenticación
 ➤ Registro de usuario
