@@ -6,22 +6,22 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -29,64 +29,90 @@ public class JwtFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        //1. EXCLUIR ENDPOINTS PÚBLICOS
-        String path = request.getServletPath();
-        if (path.startsWith("/auth") ||
-                path.startsWith("/swagger") ||
-                path.startsWith("/v3/api-docs")) {
+        String path = request.getRequestURI();
+
+        // 🔥 [L1] EXCLUIR ENDPOINTS PÚBLICOS (MEJORADO)
+        if (isPublicEndpoint(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        //2. OBTENER HEADER
-        final String authHeader = request.getHeader("Authorization");
+        // 🔥 [L2] USAR CONSTANTE HttpHeaders (MEJOR PRÁCTICA)
+        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        // 3. VALIDAR HEADER
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        // 🔥 [L3] VALIDACIÓN ROBUSTA DEL HEADER
+        if (!isValidBearerToken(authHeader)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            //4. EXTRAER TOKEN
-            String token = authHeader.substring(7);
+            // 🔥 [L4] EXTRAER TOKEN LIMPIO
+            String token = extractToken(authHeader);
 
-            //5. EXTRAER USUARIO
-            String username = jwtService.extractUsername(token);
+            // 🔥 [L5] VALIDAR TOKEN (NUEVO)
+            if (!jwtService.isTokenExpired(token)) {
 
-            //6. VALIDAR SI YA ESTÁ AUTENTICADO
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                String username = jwtService.extractUsername(token);
+                String role = jwtService.extractRole(token);
 
-                //7. CARGAR USUARIO
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                // 🔥 [L6] VALIDACIÓN MÁS SEGURA
+                if (isValidAuthentication(username, role)) {
 
-                //8. VALIDAR TOKEN
-                if (jwtService.isTokenValid(token, userDetails)) {
+                    // 🔥 [L7] ROLE
+                    String formattedRole = role.startsWith("ROLE_")
+                            ? role
+                            : "ROLE_" + role.toUpperCase();
 
-                    //9. CREAR AUTENTICACIÓN
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
-                                    userDetails,
+                                    username,
                                     null,
-                                    userDetails.getAuthorities()
+                                    List.of(new SimpleGrantedAuthority(formattedRole))
                             );
 
-                    //10. AGREGAR DETALLES (IP, sesión, etc.)
+                    // 🔥 [L8] SETEAR DETALLES (IMPORTANTE PARA AUDITORÍA)
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
 
-                    //11. SETEAR CONTEXTO
+                    // 🔥 [L9] SETEAR CONTEXTO DE SEGURIDAD
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
 
         } catch (Exception e) {
-            //12. LIMPIAR CONTEXTO SI TOKEN ES INVÁLIDO
+            // 🔥 [L10] LIMPIEZA SEGURA
             SecurityContextHolder.clearContext();
+
+            // 🔥 OPCIONAL (DEBUG)
+            System.out.println("JWT ERROR: " + e.getMessage());
         }
 
-        //13. CONTINUAR FILTRO
+        // 🔥 [L11] CONTINUAR FLUJO SIEMPRE
         filterChain.doFilter(request, response);
+    }
+
+    // 🔥 MÉTODOS AUXILIARES
+
+    private boolean isPublicEndpoint(String path) {
+        return path.startsWith("/auth") ||
+                path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/swagger-resources");
+    }
+
+    private boolean isValidBearerToken(String authHeader) {
+        return authHeader != null && authHeader.startsWith("Bearer ");
+    }
+
+    private String extractToken(String authHeader) {
+        return authHeader.substring(7);
+    }
+
+    private boolean isValidAuthentication(String username, String role) {
+        return username != null &&
+                role != null &&
+                SecurityContextHolder.getContext().getAuthentication() == null;
     }
 }

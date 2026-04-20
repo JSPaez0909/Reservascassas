@@ -1,5 +1,6 @@
 package com.cassa.reservas.service;
 
+import com.cassa.reservas.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -9,8 +10,9 @@ import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
-
 
 @Service
 public class JwtService {
@@ -24,10 +26,17 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // Generar token
-    public String generateToken(String username) {
+    // 🔐 GENERAR TOKEN CON ROLE
+    public String generateToken(UserDetails userDetails) {
+
+        User user = (User) userDetails;
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", user.getRole().name()); // NUEVO
+
         return Jwts.builder()
-                .setSubject(username)
+                .setClaims(claims)
+                .setSubject(user.getUsername())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hora
                 .signWith(getSigningKey())
@@ -37,6 +46,11 @@ public class JwtService {
     // Extraer username
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    // 🔥 EXTRAER ROLE
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     // Extraer fecha de expiración
@@ -66,9 +80,7 @@ public class JwtService {
     }
 
     // Validar expiración
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
-
-
 }

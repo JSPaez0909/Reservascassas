@@ -1,6 +1,5 @@
 package com.cassa.reservas.config;
 
-import com.cassa.reservas.repository.UserRepository;
 import com.cassa.reservas.security.JwtFilter;
 import com.cassa.reservas.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
@@ -9,14 +8,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+@EnableMethodSecurity
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -28,25 +29,44 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         return http
+
+                //  DESACTIVAR CSRF
                 .csrf(csrf -> csrf.disable())
 
+                //  DESACTIVAR HTTP BASIC (IMPORTANTE)
+                .httpBasic(httpBasic -> httpBasic.disable())
+
+                //  STATELESS JWT
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
+                //  AUTORIZACIÓN
                 .authorizeHttpRequests(auth -> auth
+
+                        // 🟢 PÚBLICOS
                         .requestMatchers(
                                 "/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
+
+                        //  ADMIN
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        //  USER + ADMIN
+                        .requestMatchers("/reservas/**").hasAnyRole("USER", "ADMIN")
+
+                        //  RESTO
                         .anyRequest().authenticated()
                 )
 
+                //  PROVIDER
                 .authenticationProvider(authenticationProvider())
 
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                //  JWT FILTER
+                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .build();
     }
