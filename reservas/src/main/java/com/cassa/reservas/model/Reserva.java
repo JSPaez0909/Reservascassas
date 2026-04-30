@@ -20,25 +20,25 @@ public class Reserva {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ✅ FECHA DE LA RESERVA
+    //  FECHA DE LA RESERVA
     @Column(nullable = false)
     private LocalDate fecha;
 
-    // ✅ DESCRIPCIÓN
+    //  DESCRIPCIÓN
     @Column(nullable = false)
     private String descripcion;
 
-    // ✅ AUDITORÍA (NUEVO)
+    //  AUDITORÍA (NUEVO)
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // ✅ RELACIÓN CON USUARIO (ORDEN CORREGIDO)
+    //  RELACIÓN CON USUARIO (ORDEN CORREGIDO)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
     private User user;
 
-    // ✅ SET AUTOMÁTICO DE FECHA DE CREACIÓN
+    //  SET AUTOMÁTICO DE FECHA DE CREACIÓN
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();

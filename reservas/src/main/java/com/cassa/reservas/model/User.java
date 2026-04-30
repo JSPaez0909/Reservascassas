@@ -30,7 +30,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role = Role.USER; // 🔥 evita null
 
-    // 🔐 SPRING SECURITY
+    //  SPRING SECURITY
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

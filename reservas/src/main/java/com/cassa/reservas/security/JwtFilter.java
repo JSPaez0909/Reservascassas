@@ -31,35 +31,35 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // 🔥 [L1] EXCLUIR ENDPOINTS PÚBLICOS (MEJORADO)
+        // 1 EXCLUIR ENDPOINTS PÚBLICOS (MEJORADO)
         if (isPublicEndpoint(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 🔥 [L2] USAR CONSTANTE HttpHeaders (MEJOR PRÁCTICA)
+        // 2 USAR CONSTANTE HttpHeaders (MEJOR PRÁCTICA)
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        // 🔥 [L3] VALIDACIÓN ROBUSTA DEL HEADER
+        // 3 VALIDACIÓN ROBUSTA DEL HEADER
         if (!isValidBearerToken(authHeader)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            // 🔥 [L4] EXTRAER TOKEN LIMPIO
+            // 4 EXTRAER TOKEN LIMPIO
             String token = extractToken(authHeader);
 
-            // 🔥 [L5] VALIDAR TOKEN (NUEVO)
+            // 5 VALIDAR TOKEN (NUEVO)
             if (!jwtService.isTokenExpired(token)) {
 
                 String username = jwtService.extractUsername(token);
                 String role = jwtService.extractRole(token);
 
-                // 🔥 [L6] VALIDACIÓN MÁS SEGURA
+                // 6 VALIDACIÓN MÁS SEGURA
                 if (isValidAuthentication(username, role)) {
 
-                    // 🔥 [L7] ROLE
+                    // 🔥 7 ROLE
                     String formattedRole = role.startsWith("ROLE_")
                             ? role
                             : "ROLE_" + role.toUpperCase();
@@ -71,29 +71,29 @@ public class JwtFilter extends OncePerRequestFilter {
                                     List.of(new SimpleGrantedAuthority(formattedRole))
                             );
 
-                    // 🔥 [L8] SETEAR DETALLES (IMPORTANTE PARA AUDITORÍA)
+                    // 🔥 8 SETEAR DETALLES (IMPORTANTE PARA AUDITORÍA)
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
 
-                    // 🔥 [L9] SETEAR CONTEXTO DE SEGURIDAD
+                    // 🔥 9 SETEAR CONTEXTO DE SEGURIDAD
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
 
         } catch (Exception e) {
-            // 🔥 [L10] LIMPIEZA SEGURA
+            // 10 LIMPIEZA SEGURA
             SecurityContextHolder.clearContext();
 
-            // 🔥 OPCIONAL (DEBUG)
+            //  OPCIONAL (DEBUG)
             System.out.println("JWT ERROR: " + e.getMessage());
         }
 
-        // 🔥 [L11] CONTINUAR FLUJO SIEMPRE
+        // 11 CONTINUAR FLUJO SIEMPRE
         filterChain.doFilter(request, response);
     }
 
-    // 🔥 MÉTODOS AUXILIARES
+    //  MÉTODOS AUXILIARES
 
     private boolean isPublicEndpoint(String path) {
         return path.startsWith("/auth") ||

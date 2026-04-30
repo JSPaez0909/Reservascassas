@@ -44,7 +44,7 @@ public class SecurityConfig {
                 //  AUTORIZACIÓN
                 .authorizeHttpRequests(auth -> auth
 
-                        // 🟢 PÚBLICOS
+                        //  PÚBLICOS
                         .requestMatchers(
                                 "/auth/**",
                                 "/v3/api-docs/**",
